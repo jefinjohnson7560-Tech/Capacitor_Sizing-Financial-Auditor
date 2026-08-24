@@ -10,10 +10,13 @@ st.write("Adjust parameters in the sidebar to calculate required compensation an
 
 # Inputs on sidebar
 st.sidebar.header("Input Parameters")
+
 apparent_power_s = st.sidebar.number_input("Apparent Power (S1 in kVA)", min_value=1.0, value=20.75, step=0.5)
 pf_initial = st.sidebar.slider("Initial Power Factor (PF1)", min_value=0.50, max_value=0.99, value=0.78, step=0.01)
 pf_target = st.sidebar.slider("Target Power Factor (PF2)", min_value=pf_initial, max_value=1.00, value=0.98, step=0.01)
-
+voltage =st.sidebar.number_input("Voltage(V)",min value=1.0,value=415)
+current=st.sidebar.number_input("Current(A)",min value=0.1,value=50)
+                                 
 # Calculations
 active_power_p = apparent_power_s * pf_initial
 phi1 = math.acos(pf_initial)

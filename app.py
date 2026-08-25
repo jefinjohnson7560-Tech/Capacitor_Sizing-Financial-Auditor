@@ -2,61 +2,128 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import math
 
-# Page setup
-st.set_page_config(page_title="Power Factor Calculator", page_icon="⚡", layout="wide")
+# Page Configuration
+st.set_page_config(page_title="Power Factor Correction Calculator", page_icon="⚡", layout="wide")
 
-st.title("⚡ Electrical Power Factor Correction & Audit Tool")
-st.write("Adjust parameters in the sidebar to calculate required compensation and view the power triangle.")
+st.title("⚡ Power Factor Correction & Savings Calculator")
+st.write("Enter your electrical parameters below to calculate capacitor sizing and view visual power triangles.")
 
-# Inputs on sidebar
-st.sidebar.header("Input Parameters")
-voltage =st.sidebar.number_input("Voltage (V)", min_value=1.0, value=415.0)
-current =st.sidebar.number_input("Current (A)", min_value=0.1, value=50.0)
+st.markdown("---")
 
+# Main Input Section
+col_left, col_right = st.columns(2)
 
-pf_initial = st.sidebar.slider("Initial Power Factor (PF1)", min_value=0.50, max_value=0.99, value=0.78, step=0.01)
-pf_target = st.sidebar.slider("Target Power Factor (PF2)", min_value=pf_initial, max_value=1.00, value=0.98, step=0.01)
-apparent_power_s = st.sidebar.number_input("Apparent Power (S1 in kVA)", min_value=1.0, value=20.75, step=0.5)
-# Calculations
-active_power_p = apparent_power_s * pf_initial
-phi1 = math.acos(pf_initial)
-q1_kvar = active_power_p * math.tan(phi1)
-
-phi2 = math.acos(pf_target)
-q2_kvar = active_power_p * math.tan(phi2)
-
-qc_required = q1_kvar - q2_kvar
-
-# Layout
-col1, col2 = st.columns([1, 1.5])
-
-with col1:
-    st.subheader("📊 Audit Summary")
-    st.metric("Active Power (P)", f"{active_power_p:.2f} kW")
-    st.metric("Initial Reactive Power (Q1)", f"{q1_kvar:.2f} kVAR")
-    st.metric("Target Reactive Power (Q2)", f"{q2_kvar:.2f} kVAR")
-    st.success(f"### 💡 Required Capacitor Bank: **{max(0.0, qc_required):.2f} kVAR**")
-
-with col2:
-    st.subheader("📐 Power Triangle Visualization")
-    fig, ax = plt.subplots(figsize=(8, 5))
+with col_left:
+    st.subheader("1. System Details")
+    phase_type = st.radio("System Type", ["Single-Phase", "Three-Phase"], horizontal=True)
     
-    # Base Active Power
-    ax.plot([0, active_power_p], [0, 0], 'b-', linewidth=3, label=f"Active Power (P) = {active_power_p:.2f} kW")
+    # Voltage Input with + / - buttons
+    voltage = st.number_input("Operating Voltage (V)", value=230.0, step=10.0, help="Standard single-phase is ~230V, 3-phase is ~415V")
     
-    # Initial State
-    ax.plot([active_power_p, active_power_p], [0, q1_kvar], 'r--', linewidth=2, label=f"Initial Q1 = {q1_kvar:.2f} kVAR")
-    ax.plot([0, active_power_p], [0, q1_kvar], 'r-', linewidth=1.5, label=f"Initial S1 (PF = {pf_initial})")
+    # Current Input with + / - buttons
+    current = st.number_input("Line Current (Amps)", value=15.0, step=1.0)
+
+with col_right:
+    st.subheader("2. Bill & Usage Details")
     
-    # Target State
-    ax.plot([active_power_p, active_power_p], [0, q2_kvar], 'g-', linewidth=3, label=f"Target Q2 = {q2_kvar:.2f} kVAR")
-    ax.plot([0, active_power_p], [0, q2_kvar], 'g--', linewidth=2, label=f"Target S2 (PF = {pf_target})")
+    # Electricity Rate Input
+    unit_rate = st.number_input("Electricity Rate per Unit / kWh (₹)", value=6.5, step=0.5)
     
-    ax.set_title("Power Factor Correction Triangle", fontweight='bold')
-    ax.set_xlabel("Active Power (kW)")
-    ax.set_ylabel("Reactive Power (kVAR)")
-    ax.grid(True, linestyle=':', alpha=0.7)
-    ax.legend(loc='upper left')
-    plt.tight_layout()
+    # Monthly Hours Input
+    hours_per_month = st.number_input("Monthly Operating Hours", value=300, step=10, help="e.g., 10 hours/day for 30 days = 300 hours")
+
+st.markdown("---")
+
+st.subheader("3. Power Factor Settings")
+pf_col1, pf_col2 = st.columns(2)
+
+with pf_col1:
+    # Initial PF Input
+    initial_pf = st.number_input("Current Power Factor (PF1)", min_value=0.10, max_value=0.99, value=0.75, step=0.01)
+
+with pf_col2:
+    st.write("Target Power Factor (PF2)")
     
-    st.pyplot(fig)
+    # Preset Selection Buttons for fast selection
+    preset_col1, preset_col2, preset_col3 = st.columns(3)
+    
+    # Session state initialization for target_pf
+    if 'target_pf_val' not in st.session_state:
+        st.session_state.target_pf_val = 0.98
+
+    if preset_col1.button("0.95"):
+        st.session_state.target_pf_val = 0.95
+    if preset_col2.button("0.98 (Ideal)"):
+        st.session_state.target_pf_val = 0.98
+    if preset_col3.button("1.00 (Max)"):
+        st.session_state.target_pf_val = 1.00
+
+    # Number input field tied to the selected value or manual entry
+    target_pf = st.number_input("Selected Target PF", min_value=0.10, max_value=1.00, value=st.session_state.target_pf_val, step=0.01, key="target_pf_input")
+
+st.markdown("---")
+
+# Large Action Button
+if st.button("🚀 Calculate Energy Audit & Sizing", type="primary", use_container_width=True):
+    if initial_pf >= target_pf:
+        st.error("Target Power Factor must be greater than Current Power Factor!")
+    else:
+        # Calculations
+        multiplier = 1.0 if phase_type == "Single-Phase" else math.sqrt(3)
+        frequency = 50.0  # Hz
+        
+        # Active Power P (kW)
+        active_power_kw = (multiplier * voltage * current * initial_pf) / 1000.0
+        
+        # Initial & Target Reactive Power Q (kVAR)
+        phi1 = math.acos(initial_pf)
+        phi2 = math.acos(target_pf)
+        q1 = active_power_kw * math.tan(phi1)
+        q2 = active_power_kw * math.tan(phi2)
+        
+        # Required Capacitor Bank Compensation Rating
+        qc_kvar = q1 - q2
+        
+        # Physical Capacitance (in uF)
+        capacitance_uf = (qc_kvar * 1000 * 10**6) / (2 * math.pi * frequency * (voltage**2))
+        
+        # Apparent Power Drop (kVA)
+        s1_kva = active_power_kw / initial_pf
+        s2_kva = active_power_kw / target_pf
+        kva_saved = s1_kva - s2_kva
+        
+        # Monthly Energy Consumption
+        monthly_kwh = active_power_kw * hours_per_month
+        monthly_cost = monthly_kwh * unit_rate
+
+        # Results Display Section
+        st.header("📊 Audit Results & Sizing Summary")
+        
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        m_col1.metric("Active Load (P)", f"{active_power_kw:.2f} kW")
+        m_col2.metric("Capacitor Rating (Qc)", f"{qc_kvar:.2f} kVAR")
+        m_col3.metric("Required Capacitance", f"{capacitance_uf:.2f} µF")
+        m_col4.metric("Demand Drop", f"{kva_saved:.2f} kVA")
+
+        # Plotting Power Triangle
+        st.subheader("📐 Power Triangle Comparison")
+        fig, ax = plt.subplots(figsize=(8, 4))
+        
+        # Active Power Line
+        ax.plot([0, active_power_kw], [0, 0], color='black', linewidth=3, label='Active Power P (kW)')
+        
+        # Uncorrected Vector
+        ax.plot([active_power_kw, active_power_kw], [0, q1], color='red', linestyle='--', linewidth=2, label=f'Initial Q1 ({q1:.2f} kVAR)')
+        ax.plot([0, active_power_kw], [0, q1], color='red', alpha=0.5, label=f'Initial S1 ({s1_kva:.2f} kVA)')
+        
+        # Corrected Vector
+        ax.plot([active_power_kw, active_power_kw], [0, q2], color='green', linestyle='--', linewidth=2, label=f'Target Q2 ({q2:.2f} kVAR)')
+        ax.plot([0, active_power_kw], [0, q2], color='green', alpha=0.7, label=f'Target S2 ({s2_kva:.2f} kVA)')
+
+        ax.set_xlabel("Active Power (kW)", fontsize=11)
+        ax.set_ylabel("Reactive Power (kVAR)", fontsize=11)
+        ax.set_title("Uncorrected vs. Corrected Power Triangle", fontsize=12)
+        ax.grid(True, linestyle=":", alpha=0.6)
+        ax.legend(loc="upper left")
+        
+        st.pyplot(fig)

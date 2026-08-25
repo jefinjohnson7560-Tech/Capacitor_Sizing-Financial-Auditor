@@ -20,8 +20,6 @@ def run_energy_audit():
         apparent_power_s1=(math.sqrt(3)*voltage*current)/1000.0
     
     
-
-
     #1.Electrical Power Calculations
  
     active_power_p=apparent_power_s1*pf_initial#kW
@@ -76,9 +74,7 @@ def run_energy_audit():
     plt.tight_layout()
     # Show Figure
     plt.show()
-
-    if __name__ == "__main__":
-       run_ene
-run_energy_audit()
+if __name__ == "__main__":
+      run_energy_audit()
 
     

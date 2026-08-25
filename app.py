@@ -6,7 +6,7 @@ import math
 st.set_page_config(page_title="Power Factor Correction Calculator", page_icon="⚡", layout="wide")
 
 st.title("⚡ Power Factor Correction & Savings Calculator")
-st.write("Enter your electrical parameters below to calculate capacitor sizing and view visual power triangles.")
+st.write("Enter your electrical parameters below to calculate capacitor sizing, monthly/annual savings, and view visual power triangles.")
 
 st.markdown("---")
 
@@ -17,10 +17,10 @@ with col_left:
     st.subheader("1. System Details")
     phase_type = st.radio("System Type", ["Single-Phase", "Three-Phase"], horizontal=True)
     
-    # Voltage Input with + / - buttons
+    # Voltage Input
     voltage = st.number_input("Operating Voltage (V)", value=230.0, step=10.0, help="Standard single-phase is ~230V, 3-phase is ~415V")
     
-    # Current Input with + / - buttons
+    # Current Input
     current = st.number_input("Line Current (Amps)", value=15.0, step=1.0)
 
 with col_right:
@@ -44,10 +44,9 @@ with pf_col1:
 with pf_col2:
     st.write("Target Power Factor (PF2)")
     
-    # Preset Selection Buttons for fast selection
+    # Preset Selection Buttons
     preset_col1, preset_col2, preset_col3 = st.columns(3)
     
-    # Session state initialization for target_pf
     if 'target_pf_val' not in st.session_state:
         st.session_state.target_pf_val = 0.98
 
@@ -58,24 +57,23 @@ with pf_col2:
     if preset_col3.button("1.00 (Max)"):
         st.session_state.target_pf_val = 1.00
 
-    # Number input field tied to the selected value or manual entry
     target_pf = st.number_input("Selected Target PF", min_value=0.10, max_value=1.00, value=st.session_state.target_pf_val, step=0.01, key="target_pf_input")
 
 st.markdown("---")
 
 # Large Action Button
-if st.button("🚀 Calculate Energy Audit & Sizing", type="primary", use_container_width=True):
+if st.button("🚀 Calculate Energy Audit & Savings", type="primary", use_container_width=True):
     if initial_pf >= target_pf:
         st.error("Target Power Factor must be greater than Current Power Factor!")
     else:
-        # Calculations
+        # 1. Core Electrical Calculations
         multiplier = 1.0 if phase_type == "Single-Phase" else math.sqrt(3)
         frequency = 50.0  # Hz
         
         # Active Power P (kW)
         active_power_kw = (multiplier * voltage * current * initial_pf) / 1000.0
         
-        # Initial & Target Reactive Power Q (kVAR)
+        # Reactive Power Q (kVAR)
         phi1 = math.acos(initial_pf)
         phi2 = math.acos(target_pf)
         q1 = active_power_kw * math.tan(phi1)
@@ -92,21 +90,37 @@ if st.button("🚀 Calculate Energy Audit & Sizing", type="primary", use_contain
         s2_kva = active_power_kw / target_pf
         kva_saved = s1_kva - s2_kva
         
-        # Monthly Energy Consumption
+        # 2. Financial & Savings Calculations
         monthly_kwh = active_power_kw * hours_per_month
-        monthly_cost = monthly_kwh * unit_rate
-
-        # Results Display Section
-        st.header("📊 Audit Results & Sizing Summary")
+        monthly_base_bill = monthly_kwh * unit_rate
         
+        # Standard utility low PF penalty estimation (typical 1% surcharge per 0.01 drop below 0.90 PF)
+        penalty_percentage = max(0.0, (0.90 - initial_pf) * 100) if initial_pf < 0.90 else 0.0
+        monthly_penalty_saved = monthly_base_bill * (penalty_percentage / 100.0)
+        annual_penalty_saved = monthly_penalty_saved * 12
+
+        # 3. Hardware & Technical Metrics Display
+        st.header("📊 1. Technical & Hardware Sizing")
         m_col1, m_col2, m_col3, m_col4 = st.columns(4)
         m_col1.metric("Active Load (P)", f"{active_power_kw:.2f} kW")
         m_col2.metric("Capacitor Rating (Qc)", f"{qc_kvar:.2f} kVAR")
         m_col3.metric("Required Capacitance", f"{capacitance_uf:.2f} µF")
         m_col4.metric("Demand Drop", f"{kva_saved:.2f} kVA")
 
-        # Plotting Power Triangle
-        st.subheader("📐 Power Triangle Comparison")
+        st.markdown("---")
+
+        # 4. Financial & Savings Display Section
+        st.header("💰 2. Financial Audit & Surcharge Savings")
+        s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+        s_col1.metric("Est. Monthly Base Bill", f"₹{monthly_base_bill:,.2f}")
+        s_col2.metric("Low PF Surcharge Rate", f"{penalty_percentage:.1f}%")
+        s_col3.metric("Penalty Saved / Month", f"₹{monthly_penalty_saved:,.2f}", delta=f"+₹{monthly_penalty_saved:,.2f}")
+        s_col4.metric("Penalty Saved / Year", f"₹{annual_penalty_saved:,.2f}", delta=f"+₹{annual_penalty_saved:,.2f}")
+
+        st.markdown("---")
+
+        # 5. Plotting Power Triangle
+        st.header("📐 3. Power Triangle Visual Proof")
         fig, ax = plt.subplots(figsize=(8, 4))
         
         # Active Power Line

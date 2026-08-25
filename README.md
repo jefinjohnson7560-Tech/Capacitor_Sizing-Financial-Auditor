@@ -1,11 +1,12 @@
 # Automated Energy Audit System
 
-A simple Python application to calculate the power factor in AC circuits using that it provides the capacitance required 
+​An interactive Python energy audit tool that calculates required PFC capacitance, models 1-phase and 3-phase load profiles, and estimates monthly electricity bill savings based on operational hours and tariff rates.
 
 ## Features
-* Calculates Power Factor ($\text{PF} = \frac{P}{S} = \cos\theta$)
-* Determines leading vs. lagging power factor
-* Quick command-line/script interface
+*Flexible inputs
+*Capacitor bank sizing
+*Electricity bill savings
+*Visual power triangles
 
 ## Requirements
 * Python 3.x

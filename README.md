@@ -1,6 +1,6 @@
-# Power Factor Calculator
+# Automated Energy Audit System
 
-A simple Python application to calculate the power factor in AC circuits using active power (kW) and apparent power (kVA), or voltage, current, and phase angle.
+A simple Python application to calculate the power factor in AC circuits using that it provides the capacitance required 
 
 ## Features
 * Calculates Power Factor ($\text{PF} = \frac{P}{S} = \cos\theta$)
